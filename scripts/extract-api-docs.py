@@ -9,7 +9,7 @@ webhook payload samples, and writes a single reference file.
 
 Requires pyyaml. Network access required. Re-run and diff when the docs change.
 """
-import collections, datetime, json, os, pathlib, re, subprocess, sys
+import collections, datetime, json, os, pathlib, re, sys
 from concurrent.futures import ThreadPoolExecutor
 from urllib.request import urlopen
 
@@ -31,10 +31,22 @@ def get(url):
 
 
 def implemented_paths():
-    """Endpoint paths this SDK already calls, for the coverage column."""
-    out = subprocess.run(["grep", "-rho", r'Path:  *"[^"]*"', "--include=*.go", str(ROOT)],
-                         capture_output=True, text=True).stdout
-    return {m.group(1) for m in re.finditer(r'Path:\s*"([^"]*)"', out)}
+    """Endpoint paths this SDK already calls, for the coverage column.
+
+    Scans non-test .go source for any string literal that looks like an
+    endpoint path, not just literals directly in `Path:` position — a path
+    can reach the request struct through a helper function (e.g.
+    `Path: path` where `path` was passed in as an argument), so matching
+    only the `Path: "..."` shape under-counts. Test files are excluded:
+    they assert on these same literals, so including them would count an
+    endpoint as implemented merely because a test mentions it.
+    """
+    paths = set()
+    for f in ROOT.rglob("*.go"):
+        if f.name.endswith("_test.go"):
+            continue
+        paths.update(re.findall(r'"(/abdm/[^"]*)"', f.read_text()))
+    return paths
 
 
 def yaml_blocks(text):

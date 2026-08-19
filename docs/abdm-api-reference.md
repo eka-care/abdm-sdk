@@ -9,13 +9,13 @@ hand-editing it.
 
 `*` = required. `?` = nullable. `✅` = already implemented in this SDK.
 
-Coverage: **27 of 92** endpoints implemented.
+Coverage: **30 of 92** endpoints implemented.
 
 | Section | Endpoints | Implemented |
 |---|---:|---:|
 | blood-bank | 2 | 0 |
 | care-contexts | 3 | 1 |
-| care-contexts/discover | 6 | 0 |
+| care-contexts/discover | 6 | 3 |
 | care-contexts/link | 1 | 1 |
 | care-contexts/providers | 1 | 0 |
 | care-contexts/records | 2 | 0 |
@@ -187,7 +187,7 @@ Initialise Linking
 
 </details>
 
-### `POST /abdm/v1/care-contexts/discover/link/on-confirm`
+### `POST /abdm/v1/care-contexts/discover/link/on-confirm` ✅
 
 Discover Link On Confirm
 
@@ -203,7 +203,7 @@ Discover Link On Confirm
 
 </details>
 
-### `POST /abdm/v1/care-contexts/discover/link/on-init`
+### `POST /abdm/v1/care-contexts/discover/link/on-init` ✅
 
 Discover Link On Init
 
@@ -217,7 +217,7 @@ Discover Link On Init
 
 </details>
 
-### `POST /abdm/v1/care-contexts/on-discover`
+### `POST /abdm/v1/care-contexts/on-discover` ✅
 
 Discover On Care Contexts
 
