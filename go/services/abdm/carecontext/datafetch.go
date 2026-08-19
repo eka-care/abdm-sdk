@@ -2,7 +2,7 @@ package carecontext
 
 import (
 	"context"
-	"crypto/sha256"
+	"crypto/md5"
 	"encoding/hex"
 	"fmt"
 	"time"
@@ -28,17 +28,18 @@ type onFetchRequest struct {
 	Entries        []onFetchEntry `json:"entries"`
 }
 
-// checksum hashes the plaintext bundle.
+// checksum returns the hex-encoded MD5 of the plaintext bundle, hashed before
+// encryption as the ABDM contract requires.
 //
-// CONFIRM: the docs say only "Checksum of the non encrypted plain text fhir
-// data" without naming an algorithm. ABDM reference implementations have used
-// MD5. Confirm with Eka before certification; this is the only place to change.
-//
-// A wrong checksum fails silently: Eka accepts the push with 202, RespondToFetch
-// returns nil, and only the receiving HIU discards the bundle. The records look
-// shared from here but never arrive.
+// MD5 and hex encoding are fixed by the wire protocol, confirmed with Eka. This is an
+// interoperability requirement, not a security choice: the HIU recomputes this
+// digest over the decrypted bundle and discards the records if it disagrees.
+// Do not "upgrade" it to SHA-256 — the receiver would reject every bundle, and
+// it would fail silently, because Eka accepts the push with 202 regardless and
+// RespondToFetch returns nil. Confidentiality comes from the AES-256-GCM
+// encryption of Content, not from this field.
 func checksum(plaintext []byte) string {
-	sum := sha256.Sum256(plaintext)
+	sum := md5.Sum(plaintext) // #nosec G401 -- protocol-mandated digest, not a security primitive
 	return hex.EncodeToString(sum[:])
 }
 

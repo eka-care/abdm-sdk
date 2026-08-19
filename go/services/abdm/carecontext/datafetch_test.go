@@ -2,7 +2,7 @@ package carecontext
 
 import (
 	"context"
-	"crypto/sha256"
+	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
 	"io"
@@ -55,7 +55,7 @@ func TestRespondToFetchEncryptsForTheHIU(t *testing.T) {
 	if entry["media"] != "application/fhir+json" || entry["care_context_id"] != "cc-1" {
 		t.Errorf("entry = %v", entry)
 	}
-	sum := sha256.Sum256(bundle)
+	sum := md5.Sum(bundle) // #nosec G401 -- asserting the protocol-mandated digest
 	if entry["checksum"] != hex.EncodeToString(sum[:]) {
 		t.Errorf("checksum = %v", entry["checksum"])
 	}
