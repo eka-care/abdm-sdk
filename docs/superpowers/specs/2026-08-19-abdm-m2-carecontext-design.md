@@ -43,8 +43,20 @@ Out of scope (v1):
    (also published for Python and Java). Do not reimplement ECDH/HKDF/AES-GCM.
 3. **Credentials belong to the integrator.** They store them; we accept them and refresh
    in memory at runtime.
+4. **No business logic.** The package is boilerplate so the integrator calls functions instead
+   of writing HTTP calls. It does not match patients, generate OTPs, build FHIR, or decide
+   policy. Every such decision stays in the caller's code; we carry bytes and correlation.
+5. **The published docs are the source of truth**, not the current implementation. Build each
+   type from `docs/abdm-api-reference.md`.
 
-## Key protocol facts (verified against developer.eka.care)
+## Key protocol facts
+
+Full extracted contract for all 92 endpoints and 18 webhook events:
+[`docs/abdm-api-reference.md`](../../abdm-api-reference.md), generated from
+`developer.eka.care/api-reference/user-app/abdm-connect`. That file is the build contract —
+do not duplicate schemas here, and regenerate it rather than hand-editing when the docs move.
+
+The facts below are the ones that shaped design decisions:
 
 - Webhook signature: header `Eka-Webhook-Signature`, value `t=<unix>,v1=<hex>`.
   HMAC-SHA256 over the literal string `"{t}.{rawBody}"` using the subscription's shared
