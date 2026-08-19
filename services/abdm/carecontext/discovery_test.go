@@ -8,24 +8,26 @@ import (
 	"testing"
 )
 
-func capture(t *testing.T) (*Service, func(), *string, *map[string]any) {
+func capture(t *testing.T) (*Service, func(), *string, *map[string]any, *http.Header) {
 	t.Helper()
 	path := new(string)
 	body := new(map[string]any)
+	hdr := new(http.Header)
 	svc, done := testService(t, func(w http.ResponseWriter, r *http.Request) {
 		*path = r.URL.Path
+		*hdr = r.Header
 		raw, _ := io.ReadAll(r.Body)
 		_ = json.Unmarshal(raw, body)
 		w.WriteHeader(http.StatusNoContent)
 	})
-	return svc, done, path, body
+	return svc, done, path, body, hdr
 }
 
 func TestOnDiscover(t *testing.T) {
-	svc, done, path, body := capture(t)
+	svc, done, path, body, hdr := capture(t)
 	defer done()
 
-	evt := &DiscoverEvent{RequestID: "req-1", TxnID: "txn-1", OID: "o", PartnerPatientID: "pp", HIPID: "hip"}
+	evt := &DiscoverEvent{RequestID: "req-1", TxnID: "txn-1", OID: "oid-1", PartnerPatientID: "pp-1", HIPID: "hip-1"}
 	err := svc.OnDiscover(context.Background(), evt, DiscoverResult{
 		Patients: []Patient{{
 			ReferenceNumber: "P1", Display: "Gajendra", HIType: HITypeOPConsultation,
@@ -45,13 +47,16 @@ func TestOnDiscover(t *testing.T) {
 	if p["ref_num"] != "P1" || p["hi_type"] != "OPConsultation" {
 		t.Errorf("patient = %v", p)
 	}
+	if hdr.Get("X-Pt-Id") != "oid-1" || hdr.Get("X-Partner-Pt-Id") != "pp-1" || hdr.Get("X-Hip-Id") != "hip-1" {
+		t.Errorf("headers = %v", *hdr)
+	}
 }
 
 func TestOnDiscoverReportsError(t *testing.T) {
-	svc, done, _, body := capture(t)
+	svc, done, _, body, hdr := capture(t)
 	defer done()
 
-	err := svc.OnDiscover(context.Background(), &DiscoverEvent{RequestID: "r", TxnID: "t"},
+	err := svc.OnDiscover(context.Background(), &DiscoverEvent{RequestID: "r", TxnID: "t", OID: "oid-err", PartnerPatientID: "pp-err", HIPID: "hip-err"},
 		DiscoverResult{Error: &ErrorDetail{Code: 1000, Message: "no match"}})
 	if err != nil {
 		t.Fatal(err)
@@ -63,14 +68,17 @@ func TestOnDiscoverReportsError(t *testing.T) {
 	if _, present := (*body)["patients"]; present {
 		t.Error("patients should be omitted when reporting an error")
 	}
+	if hdr.Get("X-Pt-Id") != "oid-err" || hdr.Get("X-Partner-Pt-Id") != "pp-err" || hdr.Get("X-Hip-Id") != "hip-err" {
+		t.Errorf("headers = %v", *hdr)
+	}
 }
 
 func TestOnLinkInit(t *testing.T) {
-	svc, done, path, body := capture(t)
+	svc, done, path, body, hdr := capture(t)
 	defer done()
 
 	err := svc.OnLinkInit(context.Background(),
-		&LinkInitEvent{RequestID: "req-2", TxnID: "txn-2"},
+		&LinkInitEvent{RequestID: "req-2", TxnID: "txn-2", OID: "oid-2", PartnerPatientID: "pp-2", HIPID: "hip-2"},
 		LinkInitResult{RefNum: "temp", OTPExpiry: "2026-08-19T10:00:00Z"})
 	if err != nil {
 		t.Fatal(err)
@@ -81,15 +89,18 @@ func TestOnLinkInit(t *testing.T) {
 	if (*body)["ref_num"] != "temp" || (*body)["otp_expiry"] != "2026-08-19T10:00:00Z" {
 		t.Errorf("body = %v", *body)
 	}
+	if hdr.Get("X-Pt-Id") != "oid-2" || hdr.Get("X-Partner-Pt-Id") != "pp-2" || hdr.Get("X-Hip-Id") != "hip-2" {
+		t.Errorf("headers = %v", *hdr)
+	}
 }
 
 // on-link-confirm correlates by request_id alone; the webhook carries no txn_id.
 func TestOnLinkConfirm(t *testing.T) {
-	svc, done, path, body := capture(t)
+	svc, done, path, body, hdr := capture(t)
 	defer done()
 
 	err := svc.OnLinkConfirm(context.Background(),
-		&LinkConfirmEvent{RequestID: "req-3", LinkRefNumber: "temp", Token: "111111"},
+		&LinkConfirmEvent{RequestID: "req-3", LinkRefNumber: "temp", Token: "111111", OID: "oid-3", PartnerPatientID: "pp-3", HIPID: "hip-3"},
 		LinkConfirmResult{Patients: []Patient{{ReferenceNumber: "P1"}}})
 	if err != nil {
 		t.Fatal(err)
@@ -102,5 +113,8 @@ func TestOnLinkConfirm(t *testing.T) {
 	}
 	if _, present := (*body)["txn_id"]; present {
 		t.Error("txn_id must not be sent on link confirm")
+	}
+	if hdr.Get("X-Pt-Id") != "oid-3" || hdr.Get("X-Partner-Pt-Id") != "pp-3" || hdr.Get("X-Hip-Id") != "hip-3" {
+		t.Errorf("headers = %v", *hdr)
 	}
 }
