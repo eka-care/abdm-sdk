@@ -1,9 +1,1 @@
 target/
-
-# The repo-root .gitignore has a bare "main" pattern (apparently meant for a
-# Go build output binary at the repo root) that also matches any directory
-# named "main" anywhere in the tree, including Maven's conventional
-# src/main/java layout. Un-ignore it here so Java sources aren't silently
-# excluded from version control.
-!src/main/
-!src/main/**
