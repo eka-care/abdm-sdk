@@ -64,8 +64,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/eka-care/eka-sdk-go/internal/config"
-	"github.com/eka-care/eka-sdk-go/internal/interfaces"
+	"github.com/eka-care/abdm-sdk/go/internal/config"
+	"github.com/eka-care/abdm-sdk/go/internal/interfaces"
 )
 
 // A long-running client must pick up a refreshed token, not the one it was built with.
@@ -402,8 +402,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/eka-care/eka-sdk-go/internal/config"
-	"github.com/eka-care/eka-sdk-go/internal/interfaces"
+	"github.com/eka-care/abdm-sdk/go/internal/config"
+	"github.com/eka-care/abdm-sdk/go/internal/interfaces"
 )
 
 func testService(t *testing.T, h http.HandlerFunc) (*Service, func()) {
@@ -561,8 +561,8 @@ package carecontext
 import (
 	"context"
 
-	"github.com/eka-care/eka-sdk-go/internal/http"
-	"github.com/eka-care/eka-sdk-go/internal/interfaces"
+	"github.com/eka-care/abdm-sdk/go/internal/http"
+	"github.com/eka-care/abdm-sdk/go/internal/interfaces"
 )
 
 // Service calls the ABDM care-context APIs.
@@ -1167,7 +1167,7 @@ import (
 	"time"
 
 	abdmecdh "github.com/eka-care/abdm-ecdh/go"
-	"github.com/eka-care/eka-sdk-go/internal/interfaces"
+	"github.com/eka-care/abdm-sdk/go/internal/interfaces"
 )
 
 const fhirMedia = "application/fhir+json"
@@ -1447,7 +1447,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/eka-care/eka-sdk-go/internal/interfaces"
+	"github.com/eka-care/abdm-sdk/go/internal/interfaces"
 )
 
 // DiscoverResult answers a discovery request: the patients you matched, or an
@@ -1603,7 +1603,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/eka-care/eka-sdk-go/internal/config"
+	"github.com/eka-care/abdm-sdk/go/internal/config"
 )
 
 func TestClientExposesCareContexts(t *testing.T) {
@@ -1621,7 +1621,7 @@ Expected: FAIL — `NewClient(cfg).CareContexts` undefined.
 
 - [ ] **Step 3: Register the service**
 
-In `services/abdm/client.go`, add the import `"github.com/eka-care/eka-sdk-go/services/abdm/carecontext"`, add the field:
+In `services/abdm/client.go`, add the import `"github.com/eka-care/abdm-sdk/go/services/abdm/carecontext"`, add the field:
 
 ```go
 	careContextService *carecontext.Service
@@ -1669,9 +1669,9 @@ import (
 	"sync"
 	"time"
 
-	ekasdk "github.com/eka-care/eka-sdk-go"
-	"github.com/eka-care/eka-sdk-go/internal/interfaces"
-	"github.com/eka-care/eka-sdk-go/services/abdm/carecontext"
+	ekasdk "github.com/eka-care/abdm-sdk/go"
+	"github.com/eka-care/abdm-sdk/go/internal/interfaces"
+	"github.com/eka-care/abdm-sdk/go/services/abdm/carecontext"
 )
 
 // otpStore stands in for the integrator's own storage. The SDK holds no state,

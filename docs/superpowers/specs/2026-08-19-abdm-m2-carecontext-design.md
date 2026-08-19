@@ -2,7 +2,11 @@
 
 Date: 2026-08-19
 Status: Approved for planning
-Repo: `github.com/eka-care/eka-sdk-go` (Go first; spec is language-neutral for the pip/Maven ports)
+Repo: `github.com/eka-care/abdm-sdk`, Go module `github.com/eka-care/abdm-sdk/go`
+
+> **Note:** this spec was written before the repo was restructured into per-language
+> directories (`go/`, `python/`, `js/`, `java/`). Paths below that begin `services/`,
+> `internal/` or `examples/` are now under `go/`. (Go first; spec is language-neutral for the pip/Maven ports)
 
 ## Problem
 
