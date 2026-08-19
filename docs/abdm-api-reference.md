@@ -1,10 +1,11 @@
 # ABDM Connect API reference (extracted)
 
-Generated 2026-08-19 from all 92 endpoints across every page under
+Generated 2026-08-19 by `scripts/extract-api-docs.py` from all
+92 endpoints across 141 pages under
 `developer.eka.care/api-reference/user-app/abdm-connect`, enumerated via `llms.txt`.
 
-The published docs are the source of truth. When they change, regenerate this file
-rather than hand-editing it.
+The published docs are the source of truth. Regenerate this file rather than
+hand-editing it.
 
 `*` = required. `?` = nullable. `✅` = already implemented in this SDK.
 
