@@ -239,15 +239,23 @@ func New(opts ...Option) *Client {
 		p := auth.NewStaticCredentialsProviderWithService(c.Auth, options.AccessToken,
 			options.RefreshToken, expiresIn, options.RefreshExpiresIn)
 		c.credentialsProvider = p
-		internalConfig.SetTokenFunc(func(ctx context.Context) (string, error) {
-			creds, err := p.Retrieve(ctx)
-			if err != nil {
-				return "", err
-			}
-			return creds.AccessToken, nil
-		})
+		internalConfig.SetTokenFunc(tokenFuncFor(p))
+	} else if options.CredentialsProvider != nil {
+		internalConfig.SetTokenFunc(tokenFuncFor(options.CredentialsProvider))
 	}
 	return c
+}
+
+// tokenFuncFor adapts a credentials provider to the resolver the config consults
+// before every request.
+func tokenFuncFor(p auth.CredentialsProvider) func(context.Context) (string, error) {
+	return func(ctx context.Context) (string, error) {
+		creds, err := p.Retrieve(ctx)
+		if err != nil {
+			return "", err
+		}
+		return creds.AccessToken, nil
+	}
 }
 
 // NewFromEnv creates a new client using environment variables
@@ -364,13 +372,7 @@ func (c *Client) Login(ctx context.Context) error {
 	// Resolve through the provider on every request so expired tokens refresh
 	// without rebuilding service clients. This replaces the old
 	// SetAuthorizationToken + createABDMClient dance, which snapshotted one token.
-	cfg.SetTokenFunc(func(ctx context.Context) (string, error) {
-		creds, err := provider.Retrieve(ctx)
-		if err != nil {
-			return "", err
-		}
-		return creds.AccessToken, nil
-	})
+	cfg.SetTokenFunc(tokenFuncFor(provider))
 
 	return nil
 }

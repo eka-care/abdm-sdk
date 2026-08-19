@@ -23,7 +23,7 @@ func NewService(config interfaces.Config) *Service {
 // The API is asynchronous: a 202 means accepted, not linked. The outcome
 // arrives later as an abha.link_care_context webhook, which ParseWebhook
 // decodes into a *LinkStatusEvent.
-func (s *Service) Link(ctx context.Context, headers interfaces.Headers, req *LinkRequest) error {
+func (s *Service) Link(ctx context.Context, headers Headers, req *LinkRequest) error {
 	body := *req
 	if body.OID == "" {
 		body.OID = headers.PatientID

@@ -16,7 +16,7 @@ type Service struct {
 
 // NewService creates a new authentication service instance
 func NewService(config interfaces.Config) *Service {
-	httpClient := http.NewClientFromInterface(config)
+	httpClient := http.NewUnauthenticatedClientFromInterface(config)
 	return &Service{
 		config: config,
 		http:   httpClient,

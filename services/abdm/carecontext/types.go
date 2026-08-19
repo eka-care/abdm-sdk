@@ -9,9 +9,24 @@
 // It is a library, not a server: you own your webhook endpoint and register its
 // URL with Eka. Inside your handler, call ParseWebhook and then the responder
 // for the event you received.
+//
+// One asymmetry to know about: a bundle whose checksum does not match what the
+// HIU computes is discarded at the far end, and nothing reports that back. Eka
+// answers 202 and RespondToFetch returns nil either way, so a checksum mismatch
+// is invisible from the HIP side — records appear shared but never arrive.
 package carecontext
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/eka-care/eka-sdk-go/internal/interfaces"
+)
+
+// Headers carries the ABDM request identifiers sent with every call: the Eka
+// patient id (X-Pt-Id), your own patient id (X-Partner-Pt-Id) and your HIP id
+// (X-Hip-Id). It is an alias, so it is interchangeable with the same type
+// elsewhere in the SDK.
+type Headers = interfaces.Headers
 
 // HIType is an ABDM health information type.
 type HIType string

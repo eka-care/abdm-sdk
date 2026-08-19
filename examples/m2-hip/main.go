@@ -16,7 +16,6 @@ import (
 	"time"
 
 	ekasdk "github.com/eka-care/eka-sdk-go"
-	"github.com/eka-care/eka-sdk-go/internal/interfaces"
 	"github.com/eka-care/eka-sdk-go/services/abdm/carecontext"
 )
 
@@ -55,7 +54,7 @@ func main() {
 	store := &otpStore{otps: map[string]string{}}
 
 	// Outbound: link a care context when a visit closes.
-	headers := interfaces.Headers{PatientID: "eka-oid", PartnerUserID: "your-patient-id", HipID: "your-hip-id"}
+	headers := carecontext.Headers{PatientID: "eka-oid", PartnerUserID: "your-patient-id", HipID: "your-hip-id"}
 	if err := cc.Link(ctx, headers, &carecontext.LinkRequest{
 		ABHAAddress: "patient@sbx",
 		CareContexts: []carecontext.CareContext{{

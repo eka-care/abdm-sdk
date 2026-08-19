@@ -33,6 +33,10 @@ type onFetchRequest struct {
 // CONFIRM: the docs say only "Checksum of the non encrypted plain text fhir
 // data" without naming an algorithm. ABDM reference implementations have used
 // MD5. Confirm with Eka before certification; this is the only place to change.
+//
+// A wrong checksum fails silently: Eka accepts the push with 202, RespondToFetch
+// returns nil, and only the receiving HIU discards the bundle. The records look
+// shared from here but never arrive.
 func checksum(plaintext []byte) string {
 	sum := sha256.Sum256(plaintext)
 	return hex.EncodeToString(sum[:])

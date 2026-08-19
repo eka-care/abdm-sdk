@@ -70,6 +70,20 @@ func NewClientFromInterface(config interfaces.Config) *Client {
 	}
 }
 
+// NewUnauthenticatedClientFromInterface is NewClientFromInterface without token
+// resolution: it keeps the config's static API key but does not store the config,
+// so Do never calls back into the TokenProvider.
+//
+// The auth service uses this. Its login and refresh endpoints authenticate from
+// the request body, not a bearer header, and resolving a token for them would be
+// reentrant: Token -> provider.Retrieve (holding its lock) -> RefreshToken ->
+// Do -> Token -> Retrieve -> deadlock on the same goroutine.
+func NewUnauthenticatedClientFromInterface(config interfaces.Config) *Client {
+	c := NewClientFromInterface(config)
+	c.config = nil
+	return c
+}
+
 // AddMiddleware adds middleware to the client
 func (c *Client) AddMiddleware(middleware interfaces.Middleware) {
 	c.middleware = append(c.middleware, middleware)

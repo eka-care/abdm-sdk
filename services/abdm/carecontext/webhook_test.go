@@ -124,3 +124,25 @@ func TestParseWebhookDataFetchKeyMaterial(t *testing.T) {
 		t.Errorf("key material not captured: %+v", df.keyInfo)
 	}
 }
+
+// An unconfigured secret must not authenticate anything: with an empty key the
+// HMAC is computable by anyone, so a forged payload would otherwise pass.
+func TestParseWebhookEmptySecretRejected(t *testing.T) {
+	body := `{"service":"abdm","event":"abha.link_care_context","data":{"care_context_id":"cc-1"}}`
+	// Signature is genuinely valid for the empty key — still must be rejected.
+	_, err := ParseWebhook([]byte(body), sign(t, body, "", time.Now()), "")
+	if !errors.Is(err, ErrBadSignature) {
+		t.Fatalf("err = %v, want ErrBadSignature", err)
+	}
+}
+
+func TestParseWebhookDataFetchEmptyData(t *testing.T) {
+	body := `{"service":"abdm","event":"abha.hip_data_fetch","transaction_id":"txn-9"}`
+	e, err := ParseWebhook([]byte(body), sign(t, body, secret, time.Now()), secret)
+	if err != nil {
+		t.Fatalf("ParseWebhook: %v", err)
+	}
+	if df := e.(*DataFetchEvent); df.TransactionID != "txn-9" {
+		t.Errorf("transaction id = %q", df.TransactionID)
+	}
+}

@@ -79,9 +79,9 @@ func (s *Service) OnLinkInit(ctx context.Context, e *LinkInitEvent, res LinkInit
 	if e == nil {
 		return fmt.Errorf("carecontext: nil link init event")
 	}
-	body := onLinkInitBody{
-		RequestID: e.RequestID, TxnID: e.TxnID,
-		RefNum: res.RefNum, OTPExpiry: res.OTPExpiry, Error: res.Error,
+	body := onLinkInitBody{RequestID: e.RequestID, TxnID: e.TxnID, Error: res.Error}
+	if res.Error == nil {
+		body.RefNum, body.OTPExpiry = res.RefNum, res.OTPExpiry
 	}
 	return s.postDiscovery(ctx, "/abdm/v1/care-contexts/discover/link/on-init", e.OID, e.PartnerPatientID, e.HIPID, &body)
 }

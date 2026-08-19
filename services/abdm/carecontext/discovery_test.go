@@ -118,3 +118,29 @@ func TestOnLinkConfirm(t *testing.T) {
 		t.Errorf("headers = %v", *hdr)
 	}
 }
+
+// An errored result sends the correlation ids and the error only — same as
+// OnDiscover and OnLinkConfirm.
+func TestOnLinkInitErrorOmitsRefNum(t *testing.T) {
+	svc, done, _, body, _ := capture(t)
+	defer done()
+
+	evt := &LinkInitEvent{RequestID: "req-1", TxnID: "txn-1"}
+	err := svc.OnLinkInit(context.Background(), evt, LinkInitResult{
+		RefNum:    "should-not-be-sent",
+		OTPExpiry: "2026-01-01T00:00:00Z",
+		Error:     &ErrorDetail{Code: 1000, Message: "no match"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := (*body)["ref_num"]; ok {
+		t.Errorf("ref_num sent alongside error: %v", *body)
+	}
+	if _, ok := (*body)["otp_expiry"]; ok {
+		t.Errorf("otp_expiry sent alongside error: %v", *body)
+	}
+	if (*body)["error"] == nil || (*body)["request_id"] != "req-1" {
+		t.Errorf("body = %v", *body)
+	}
+}

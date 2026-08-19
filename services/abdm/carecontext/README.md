@@ -25,6 +25,21 @@ case *carecontext.LinkConfirmEvent: cc.OnLinkConfirm(ctx, e, result)
 
 See [`examples/m2-hip`](../../../examples/m2-hip) for a complete server.
 
+`headers` is a `carecontext.Headers` — the ABDM request identifiers (`X-Pt-Id`,
+`X-Partner-Pt-Id`, `X-Hip-Id`) sent with every call:
+
+```go
+headers := carecontext.Headers{PatientID: oid, PartnerUserID: yourPatientID, HipID: hipID}
+```
+
+## A checksum mismatch is silent
+
+`RespondToFetch` returns `nil` as soon as Eka answers 202. If the bundle's
+checksum does not match what the receiving HIU computes, the HIU discards it and
+nothing reports that back — the records look shared but never arrive. The
+algorithm is SHA-256, marked `CONFIRM:` in `datafetch.go` pending confirmation
+from Eka; verify it before certification.
+
 ## Two rules you must follow
 
 1. **Return non-2xx to make ABDM retry.** Retry is the recovery mechanism; this

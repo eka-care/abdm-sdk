@@ -170,8 +170,10 @@ func ParseWebhook(body []byte, signatureHeader, secret string) (Event, error) {
 			HITypes          []HIType    `json:"hi_types"`
 			KeyInformation   keyMaterial `json:"key_information"`
 		}
-		if err := json.Unmarshal(env.Data, &d); err != nil {
-			return nil, fmt.Errorf("carecontext: decode %s: %w", env.Event, err)
+		if len(env.Data) > 0 {
+			if err := json.Unmarshal(env.Data, &d); err != nil {
+				return nil, fmt.Errorf("carecontext: decode %s: %w", env.Event, err)
+			}
 		}
 		// The envelope's transaction_id is the fallback when data omits it.
 		txn := d.TransactionID
@@ -221,6 +223,11 @@ func verifySignature(body []byte, header, secret string) error {
 	}
 	if ts == "" || v1 == "" {
 		return fmt.Errorf("%w: malformed header", ErrBadSignature)
+	}
+	// An empty secret would key the HMAC with nothing, which anyone can compute.
+	// Refuse rather than authenticate every forgery.
+	if secret == "" {
+		return fmt.Errorf("%w: no webhook secret configured", ErrBadSignature)
 	}
 
 	mac := hmac.New(sha256.New, []byte(secret))
