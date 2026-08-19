@@ -37,8 +37,10 @@ headers := carecontext.Headers{PatientID: oid, PartnerUserID: yourPatientID, Hip
 `RespondToFetch` returns `nil` as soon as Eka answers 202. If the bundle's
 checksum does not match what the receiving HIU computes, the HIU discards it and
 nothing reports that back — the records look shared but never arrive. The
-algorithm is SHA-256, marked `CONFIRM:` in `datafetch.go` pending confirmation
-from Eka; verify it before certification.
+algorithm is hex-encoded MD5 over the plaintext bundle, fixed by the wire
+protocol and confirmed with Eka. It is an interoperability requirement, not a
+security choice: do not "upgrade" it to SHA-256, or every bundle you send will
+be silently rejected.
 
 ## Two rules you must follow
 
