@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -44,6 +45,8 @@ func (c *Credentials) CanRefresh() bool {
 // StaticCredentialsProvider provides static credentials
 type StaticCredentialsProvider struct {
 	credentials *Credentials
+	mu          sync.Mutex
+	service     *Service
 }
 
 // NewStaticCredentialsProvider creates a new static credentials provider
@@ -60,8 +63,39 @@ func NewStaticCredentialsProvider(accessToken, refreshToken string, expiresIn, r
 	}
 }
 
-// Retrieve returns the static credentials
+// NewStaticCredentialsProviderWithService creates a static provider that can refresh
+// itself using the given auth service.
+func NewStaticCredentialsProviderWithService(svc *Service, accessToken, refreshToken string, expiresIn, refreshExpiresIn int) *StaticCredentialsProvider {
+	p := NewStaticCredentialsProvider(accessToken, refreshToken, expiresIn, refreshExpiresIn)
+	p.service = svc
+	return p
+}
+
+// Retrieve returns the static credentials, refreshing once if they have expired
+// and a usable refresh token is present.
 func (p *StaticCredentialsProvider) Retrieve(ctx context.Context) (*Credentials, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if !p.credentials.Expired() {
+		return p.credentials, nil
+	}
+	if p.service == nil || !p.credentials.CanRefresh() {
+		return nil, fmt.Errorf("credentials expired: supply client credentials or a fresh token")
+	}
+	resp, err := p.service.RefreshToken(ctx, &RefreshTokenRequest{
+		AccessToken:  p.credentials.AccessToken,
+		RefreshToken: p.credentials.RefreshToken,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("refresh static credentials: %w", err)
+	}
+	p.credentials = &Credentials{
+		AccessToken:      resp.AccessToken,
+		RefreshToken:     resp.RefreshToken,
+		ExpiresAt:        time.Now().Add(time.Duration(resp.ExpiresIn) * time.Second),
+		RefreshExpiresAt: time.Now().Add(time.Duration(resp.RefreshExpiresIn) * time.Second),
+		Source:           "StaticCredentialsProvider(refresh)",
+	}
 	return p.credentials, nil
 }
 

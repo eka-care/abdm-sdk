@@ -1,7 +1,9 @@
 package config
 
 import (
+	"context"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/eka-care/eka-sdk-go/internal/interfaces"
@@ -46,6 +48,9 @@ type Config struct {
 	RequestTimeout     time.Duration
 	ResponseTimeout    time.Duration
 	ConnectionTimeout  time.Duration
+
+	mu      sync.RWMutex
+	tokenFn func(context.Context) (string, error)
 }
 
 // Ensure Config implements interfaces.Config
@@ -72,7 +77,8 @@ func NewConfig() *Config {
 func (c *Config) GetEnvironment() Environment { return c.Environment }
 func (c *Config) GetBaseURL() string          { return c.BaseURL }
 func (c *Config) GetAPIKey() string {
-	// For API calls, we use the JWT authorization token
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.AuthorizationToken
 }
 func (c *Config) GetTimeout() time.Duration           { return c.Timeout }
@@ -94,5 +100,28 @@ func (c *Config) GetClientID() string { return c.ClientID }
 // GetClientSecret returns the client secret for authentication
 func (c *Config) GetClientSecret() string { return c.ClientSecret }
 
-// SetAuthorizationToken sets the JWT token for API calls
-func (c *Config) SetAuthorizationToken(token string) { c.AuthorizationToken = token }
+// SetAuthorizationToken sets a static JWT for API calls.
+func (c *Config) SetAuthorizationToken(token string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.AuthorizationToken = token
+}
+
+// SetTokenFunc installs a resolver consulted before every request. Use this instead
+// of SetAuthorizationToken for long-running processes so expired tokens refresh.
+func (c *Config) SetTokenFunc(fn func(context.Context) (string, error)) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.tokenFn = fn
+}
+
+// Token implements interfaces.TokenProvider.
+func (c *Config) Token(ctx context.Context) (string, error) {
+	c.mu.RLock()
+	fn, static := c.tokenFn, c.AuthorizationToken
+	c.mu.RUnlock()
+	if fn == nil {
+		return static, nil
+	}
+	return fn(ctx)
+}

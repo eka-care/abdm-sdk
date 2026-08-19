@@ -38,6 +38,7 @@ package ekasdk
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/http"
 	"os"
 	"strconv"
@@ -78,6 +79,10 @@ type ClientOptions struct {
 	ClientID            string // Client ID for authentication
 	ClientSecret        string // Client Secret for authentication
 	CredentialsProvider auth.CredentialsProvider
+	AccessToken         string
+	RefreshToken        string
+	ExpiresIn           int
+	RefreshExpiresIn    int
 	Timeout             time.Duration
 	MaxRetries          int
 	UserAgent           string
@@ -136,6 +141,18 @@ func WithClientSecret(clientSecret string) Option {
 func WithCredentialsProvider(provider auth.CredentialsProvider) Option {
 	return func(opts *ClientOptions) {
 		opts.CredentialsProvider = provider
+	}
+}
+
+// WithAccessToken supplies an existing token instead of client credentials.
+// Pass a refresh token and lifetimes when you have them so the SDK can refresh;
+// with a long-lived token alone, pass 0 lifetimes and it is used as-is.
+func WithAccessToken(accessToken, refreshToken string, expiresIn, refreshExpiresIn int) Option {
+	return func(opts *ClientOptions) {
+		opts.AccessToken = accessToken
+		opts.RefreshToken = refreshToken
+		opts.ExpiresIn = expiresIn
+		opts.RefreshExpiresIn = refreshExpiresIn
 	}
 }
 
@@ -208,12 +225,29 @@ func New(opts ...Option) *Client {
 		ConnectionTimeout: options.ConnectionTimeout,
 	}
 
-	return &Client{
+	c := &Client{
 		config:              internalConfig,
 		credentialsProvider: options.CredentialsProvider,
 		Auth:                auth.NewService(internalConfig),
 		ABDM:                createABDMClient(internalConfig),
 	}
+	if options.AccessToken != "" {
+		expiresIn := options.ExpiresIn
+		if expiresIn == 0 {
+			expiresIn = math.MaxInt32 // long-lived token: never treated as expired
+		}
+		p := auth.NewStaticCredentialsProviderWithService(c.Auth, options.AccessToken,
+			options.RefreshToken, expiresIn, options.RefreshExpiresIn)
+		c.credentialsProvider = p
+		internalConfig.SetTokenFunc(func(ctx context.Context) (string, error) {
+			creds, err := p.Retrieve(ctx)
+			if err != nil {
+				return "", err
+			}
+			return creds.AccessToken, nil
+		})
+	}
+	return c
 }
 
 // NewFromEnv creates a new client using environment variables
@@ -321,17 +355,22 @@ func (c *Client) Login(ctx context.Context) error {
 	provider := auth.NewClientCredentialsProvider(c.Auth, loginRequest)
 	c.credentialsProvider = provider
 
-	// Get credentials to trigger initial login
-	credentials, err := provider.Retrieve(ctx)
-	if err != nil {
+	// Verify the credentials work before returning, so a bad client_id/secret
+	// fails here rather than on the first API call.
+	if _, err := provider.Retrieve(ctx); err != nil {
 		return fmt.Errorf("failed to authenticate with provided credentials: %w", err)
 	}
 
-	// Set the authorization token in config for ABDM client
-	cfg.SetAuthorizationToken(credentials.AccessToken)
-
-	// Recreate ABDM client with the new token
-	c.ABDM = createABDMClient(cfg)
+	// Resolve through the provider on every request so expired tokens refresh
+	// without rebuilding service clients. This replaces the old
+	// SetAuthorizationToken + createABDMClient dance, which snapshotted one token.
+	cfg.SetTokenFunc(func(ctx context.Context) (string, error) {
+		creds, err := provider.Retrieve(ctx)
+		if err != nil {
+			return "", err
+		}
+		return creds.AccessToken, nil
+	})
 
 	return nil
 }

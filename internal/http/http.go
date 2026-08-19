@@ -21,6 +21,7 @@ type Client struct {
 	timeout    time.Duration
 	httpClient *http.Client
 	middleware []interfaces.Middleware
+	config     interfaces.Config
 }
 
 // Config represents HTTP client configuration
@@ -65,6 +66,7 @@ func NewClientFromInterface(config interfaces.Config) *Client {
 		userAgent:  config.GetUserAgent(),
 		timeout:    config.GetTimeout(),
 		httpClient: httpClient,
+		config:     config,
 	}
 }
 
@@ -109,7 +111,15 @@ func (c *Client) Do(ctx context.Context, req *interfaces.HTTPRequest) (*interfac
 	}
 
 	// Set headers
-	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
+	token := c.apiKey
+	if tp, ok := c.config.(interfaces.TokenProvider); ok {
+		t, err := tp.Token(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("resolve credentials: %w", err)
+		}
+		token = t
+	}
+	httpReq.Header.Set("Authorization", "Bearer "+token)
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("User-Agent", c.userAgent)
 

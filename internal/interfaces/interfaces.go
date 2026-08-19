@@ -24,6 +24,13 @@ type Config interface {
 	GetConnectionTimeout() time.Duration
 }
 
+// TokenProvider is implemented by configs that can resolve a fresh bearer token
+// on demand. The HTTP client checks for it on every request, so a token refreshed
+// after client construction is picked up without rebuilding anything.
+type TokenProvider interface {
+	Token(ctx context.Context) (string, error)
+}
+
 // HTTPClient represents the HTTP client interface
 type HTTPClient interface {
 	Do(ctx context.Context, req *HTTPRequest) (*HTTPResponse, error)
