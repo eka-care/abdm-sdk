@@ -24,7 +24,9 @@ vendor/pkg/*
 .idea/*
 *.env
 .DS_Store
-main
+# Anchored to the repo root: a bare "main" also matches any directory named
+# main, which silently excluded java/src/main (Maven's standard layout).
+/main
 local.env
 *.txt
 tags
