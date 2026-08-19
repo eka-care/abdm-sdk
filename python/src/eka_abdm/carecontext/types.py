@@ -1,6 +1,8 @@
-"""Request types for the care-context link call. Mirrors
-go/services/abdm/carecontext/types.go, scoped to what Task 1 needs (link
-only — webhook/discovery types are Task 2).
+"""Shared care-context types. Mirrors go/services/abdm/carecontext/types.go.
+
+The package is boilerplate only. It carries bytes and correlation
+identifiers; it never decides what your data means. Matching patients,
+generating OTPs and building FHIR bundles stay in your code.
 """
 
 from dataclasses import dataclass, field
@@ -8,7 +10,16 @@ from typing import List, Optional
 
 from ..http import Headers
 
-__all__ = ["Headers", "HIType", "CareContext", "LinkRequest"]
+__all__ = [
+    "Headers",
+    "HIType",
+    "CareContext",
+    "LinkRequest",
+    "Entry",
+    "ErrorDetail",
+    "DiscoveredCareContext",
+    "Patient",
+]
 
 
 class HIType:
@@ -64,4 +75,56 @@ class LinkRequest:
             d["oid"] = self.oid
         if self.partner_user_id:
             d["partner_user_id"] = self.partner_user_id
+        return d
+
+
+@dataclass
+class Entry:
+    """One care context's FHIR bundle, supplied by you and encrypted by
+    Service.respond_to_fetch. bundle is ABDM-compliant FHIR R4 JSON bytes."""
+
+    care_context_id: str
+    bundle: bytes
+
+
+@dataclass
+class ErrorDetail:
+    """Reports a failure back to ABDM through an on-* responder — no
+    patient matched, OTP invalid, and so on."""
+
+    code: int
+    message: str
+
+    def to_dict(self) -> dict:
+        return {"code": self.code, "message": self.message}
+
+
+@dataclass
+class DiscoveredCareContext:
+    """One unlinked care context offered during discovery."""
+
+    ref_num: str
+    display: str
+
+    def to_dict(self) -> dict:
+        return {"ref_num": self.ref_num, "display": self.display}
+
+
+@dataclass
+class Patient:
+    """A matched patient and their unlinked care contexts."""
+
+    ref_num: str
+    display: str
+    hi_type: str = ""
+    care_contexts: List[DiscoveredCareContext] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        d = {
+            "ref_num": self.ref_num,
+            "display": self.display,
+            "care_contexts": [cc.to_dict() for cc in self.care_contexts],
+        }
+        if self.hi_type:
+            d["hi_type"] = self.hi_type
         return d
