@@ -11,6 +11,7 @@ import (
 	"github.com/eka-care/eka-sdk-go/services/abdm/abha/login"
 	"github.com/eka-care/eka-sdk-go/services/abdm/abha/profile"
 	"github.com/eka-care/eka-sdk-go/services/abdm/abha/registration"
+	"github.com/eka-care/eka-sdk-go/services/abdm/carecontext"
 )
 
 // Client represents the ABDM services client
@@ -20,6 +21,7 @@ type Client struct {
 	registrationService *registration.Service
 	profileService      *profile.Service
 	utilsService        *utils.Service
+	careContextService  *carecontext.Service
 }
 
 // NewClient creates a new ABDM client with the given configuration
@@ -30,6 +32,7 @@ func NewClient(config interfaces.Config) *Client {
 		registrationService: registration.NewService(config),
 		profileService:      profile.NewService(config),
 		utilsService:        utils.NewService(config),
+		careContextService:  carecontext.NewService(config),
 	}
 }
 
@@ -51,4 +54,9 @@ func (c *Client) Profile() *profile.Service {
 // Utils returns the ABDM utils service
 func (c *Client) Utils() *utils.Service {
 	return c.utilsService
+}
+
+// CareContexts returns the ABDM care-context service (Milestone 2).
+func (c *Client) CareContexts() *carecontext.Service {
+	return c.careContextService
 }

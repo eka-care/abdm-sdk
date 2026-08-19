@@ -9,14 +9,14 @@ hand-editing it.
 
 `*` = required. `?` = nullable. `✅` = already implemented in this SDK.
 
-Coverage: **25 of 92** endpoints implemented.
+Coverage: **27 of 92** endpoints implemented.
 
 | Section | Endpoints | Implemented |
 |---|---:|---:|
 | blood-bank | 2 | 0 |
-| care-contexts | 3 | 0 |
+| care-contexts | 3 | 1 |
 | care-contexts/discover | 6 | 0 |
-| care-contexts/link | 1 | 0 |
+| care-contexts/link | 1 | 1 |
 | care-contexts/providers | 1 | 0 |
 | care-contexts/records | 2 | 0 |
 | commons | 3 | 2 |
@@ -92,7 +92,7 @@ Get Blood Banks
 
 ## care-contexts
 
-### `POST /abdm/v1/hip/care-context/data/on-fetch`
+### `POST /abdm/v1/hip/care-context/data/on-fetch` ✅
 
 Push care context data to HIU
 
@@ -235,7 +235,7 @@ Discover On Care Contexts
 
 ## care-contexts/link
 
-### `POST /abdm/v1/care-contexts/link`
+### `POST /abdm/v1/care-contexts/link` ✅
 
 Care context linking
 
