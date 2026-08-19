@@ -1,0 +1,4 @@
+github.com/eka-care/abdm-ecdh/go v1.0.0 h1:Ho77np3eGesC7pqlbT6G2Ba+PJNQXdlhrYRuNSG4+0E=
+github.com/eka-care/abdm-ecdh/go v1.0.0/go.mod h1:70FD1AcfQ+eZKD784MdFpFn/uJmyxvOrDf2zePGu7Go=
+golang.org/x/crypto v0.48.0 h1:/VRzVqiRSggnhY7gNRxPauEQ5Drw9haKdM0jqfcCFts=
+golang.org/x/crypto v0.48.0/go.mod h1:r0kV5h3qnFPlQnBSrULhlsRfryS2pmewsg+XfMgkVos=
