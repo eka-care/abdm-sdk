@@ -81,10 +81,12 @@ Every one of these caused a real defect or was caught in review. Carry them acro
 5. **Verify the signature before parsing anything.** HMAC-SHA256 over the literal
    `"{t}.{rawBody}"` using the raw received bytes, constant-time comparison, and a ±3 minute
    window enforced in both directions.
-6. **The checksum is SHA-256 hex over the PLAINTEXT bundle, and it is an unconfirmed guess.**
-   Isolate it in one named function with a `CONFIRM:` comment stating that a wrong algorithm
-   **fails silently** — Eka returns 202, the call returns success, and only the HIU discards
-   the data. Mirror Go's wording.
+6. **The checksum is hex-encoded MD5 over the PLAINTEXT bundle**, hashed before encryption.
+   MD5 and hex are fixed by the wire protocol (confirmed with Eka), not a security choice —
+   the comment must say so, or someone will "upgrade" it to SHA-256 and break every bundle.
+   Isolate it in one named function and note that a wrong algorithm **fails silently**: Eka
+   returns 202, the call returns success, and only the HIU discards the data. Mirror Go's
+   `checksum()` in `go/services/abdm/carecontext/datafetch.go` exactly.
 7. **Ephemeral key material per call.** Generate inside the responder; never cache it on the
    client or reuse it across calls. The private key must never leave the process.
 8. **Never hold a lock across a token-refresh network call.** In Go this produced a reentrant
@@ -138,5 +140,5 @@ java/
 
 ## Open questions
 
-None blocking. The checksum algorithm remains unconfirmed in all three languages and must be
-changed in all three together once Eka confirms it.
+None. The checksum algorithm was confirmed with Eka on 2026-08-19 as hex-encoded MD5 and is
+already correct in Go; both ports must match it.

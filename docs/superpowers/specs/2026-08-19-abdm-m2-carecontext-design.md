@@ -191,7 +191,7 @@ headers, so the integrator never rebuilds a correlation or touches key material 
 2. For each entry: `Encrypt(EncryptionRequest{StringToEncrypt: string(Bundle),
    SenderNonce: ours, RequesterNonce: hiu.Nonce, SenderPrivateKey: ours,
    RequesterPublicKey: hiu.DHPublicKey.KeyValue})`.
-3. SHA-256 checksum of the **plaintext** bundle (per API contract).
+3. Hex-encoded MD5 checksum of the **plaintext** bundle (per API contract; confirmed with Eka).
 4. `POST /abdm/v1/hip/care-context/data/on-fetch` with `transaction_id`, `entries[]`,
    our `key_information`, and `X-Pt-Id` / `X-Partner-Pt-Id` / `X-Hip-Id` filled from the event.
 

@@ -26,7 +26,7 @@
 
 The published docs do not specify these. Each is isolated in a single named function so it is a one-line change:
 
-1. **Checksum algorithm** for `entries[].checksum`. Docs say only "Checksum of the non encrypted plain text fhir data". This plan implements SHA-256 hex in `checksum()` (Task 4). ABDM reference implementations have historically used MD5, so this must be confirmed.
+1. ~~**Checksum algorithm** for `entries[].checksum`.~~ **RESOLVED 2026-08-19**: Eka confirmed hex-encoded MD5. The plan below implements SHA-256, which was wrong; corrected in commit `4b80801`. Left here as written for the record.
 2. **`key_information.dh_public_key.parameters` and `expiry`** values the HIP should send. This plan echoes the HIU's `parameters` and sets `expiry` to now+24h in `ourKeyInformation()` (Task 4).
 
 Both are flagged with `// CONFIRM:` comments in the code.
