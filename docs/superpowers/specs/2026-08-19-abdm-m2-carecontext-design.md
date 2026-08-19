@@ -21,12 +21,13 @@ In scope (v1):
 - Outbound care-context linking (`POST /abdm/v1/care-contexts/link`).
 - Inbound `abha.hip_data_fetch`: parse, encrypt, respond via Data-On-Fetch.
 - Inbound `abha.link_care_context`: parse into a typed status event.
+- Patient-initiated discovery: the three inbound webhooks and their three `on-*` responders.
 - Per-request credential resolution so long-running integrator processes do not 401.
+
+Together these cover both linking directions, which is what M2 certification exercises.
 
 Out of scope (v1):
 
-- Discovery (`abha.discover_care_context`) and the link-init/confirm OTP handshake.
-  **Full M2 certification requires these**; v1 covers the HIP-initiated path end to end.
 - FHIR bundle construction — the integrator supplies bundle bytes (see `abdm-fhir`).
 - Persistence, link-state tables, dedupe stores, retry queues.
 - Providers/Records listing endpoints.
@@ -54,6 +55,26 @@ Out of scope (v1):
 - Data-On-Fetch: `POST /abdm/v1/hip/care-context/data/on-fetch`, correlated by
   `transaction_id`, carrying `entries[]` (`care_context_id`, `content`, `checksum`, `media`),
   `page_number`, `page_count`, and the **HIP's own** `key_information`.
+- Discovery is three request/response pairs. Event names are inconsistent upstream and must
+  be matched verbatim, not derived:
+
+  | Webhook event | HIP responds via | Required response fields |
+  |---|---|---|
+  | `abha.care_context_discover` | `POST /abdm/v1/care-contexts/on-discover` | `txn_id`, `request_id` |
+  | `abha.care_context_discover_link_init` | `POST /abdm/v1/care-contexts/discover/link/on-init` | `txn_id`, `request_id` |
+  | `abha.context_discover_link_confirm` | `POST /abdm/v1/care-contexts/discover/link/on-confirm` | `request_id` |
+
+  Note the third event has no `care_` prefix, and its webhook carries **no `txn_id`** —
+  correlation is via `linkRefNumber` (camelCase, unlike every other field; leaked from ABDM
+  upstream, do not "fix" it) matched against the `ref_num` the HIP sent at init.
+  All three responders return `204 No Content`.
+- Every `on-*` responder accepts an optional `error` object (`code`, `message`). Failure —
+  no patient matched, OTP invalid — is reported **through** the API, not by staying silent.
+
+Do not confuse the HIP-side `on_discover` / `link_on_init` / `link_on_confirm` endpoints with
+the similarly named patient-app endpoints (`discover/discover`, `discover/link-init`,
+`discover/link-confirm`, the last taking `{txn_id, otp}`). Those belong to the PHR side and
+are not part of this package.
 
 Consequence: because both parties send their own key material in-band, there is no key
 lifecycle. Generate an ephemeral keypair per `RespondToFetch` call and discard it. No key
@@ -63,8 +84,10 @@ store, no rotation policy, no registration step.
 
 ```
 services/abdm/carecontext/
-  types.go      LinkRequest/Response, CareContext, HIType constants, DataFetchEvent, LinkStatusEvent, Entry
+  types.go      LinkRequest/Response, CareContext, HIType constants, Entry, Patient,
+                DataFetchEvent, LinkStatusEvent, DiscoverEvent, LinkInitEvent, LinkConfirmEvent
   service.go    Link(), RespondToFetch()
+  discovery.go  OnDiscover(), OnLinkInit(), OnLinkConfirm()
   webhook.go    ParseWebhook()
   webhook_test.go
 examples/m2-hip/main.go
@@ -75,7 +98,7 @@ Mirrors the existing `services/abdm/abha/*` convention (`Service` struct built f
 `client.ABDM.CareContexts()` in `services/abdm/client.go`, alongside `Login()`,
 `Registration()`, `Profile()`.
 
-## Exported surface — three functions
+## Exported surface — six functions
 
 ```go
 cc := client.ABDM.CareContexts()
@@ -102,14 +125,39 @@ case *carecontext.DataFetchEvent:
     })
 case *carecontext.LinkStatusEvent:
     err = store.MarkLinked(e.CareContextID, e.Status, e.Error)
+
+// Discovery: three more events, three more responders.
+case *carecontext.DiscoverEvent:
+    err = cc.OnDiscover(ctx, e, carecontext.DiscoverResult{
+        Patients: matchPatients(e.PatientName, e.Gender, e.YearOfBirth, e.Identifiers),
+    })
+case *carecontext.LinkInitEvent:
+    refNum, expiry, err := sendOTP(e.ABHAAddress) // integrator's SMS + state
+    err = cc.OnLinkInit(ctx, e, carecontext.LinkInitResult{RefNum: refNum, OTPExpiry: expiry})
+case *carecontext.LinkConfirmEvent:
+    if !validOTP(e.LinkRefNumber, e.Token) { // integrator validates
+        err = cc.OnLinkConfirm(ctx, e, carecontext.LinkConfirmResult{
+            Error: &carecontext.ErrorDetail{Code: 1402, Message: "invalid OTP"}})
+        break
+    }
+    err = cc.OnLinkConfirm(ctx, e, carecontext.LinkConfirmResult{Patients: linked})
 }
 ```
+
+Each responder takes the event value back plus one result struct. Every result struct carries
+an optional `Error *ErrorDetail`, mirroring the API contract: set `Patients`/`RefNum` on
+success, set `Error` on failure. One function per endpoint, no success/failure function pairs.
 
 `Entry` is `{CareContextID string; Bundle []byte}` — ABDM-compliant FHIR R4 JSON.
 
 `ParseWebhook` returns a typed event, or `ErrBadSignature` / `ErrStaleTimestamp` /
 `ErrUnknownEvent`. Unknown events are a distinct sentinel, not a failure: the integrator
 should answer 200 so their endpoint does not break when new event types ship.
+
+Responders take the event value straight back, so `txn_id` / `request_id` / `linkRefNumber`
+and the `oid` / `partner_patient_id` / `hip_id` headers are carried automatically. The
+integrator never rebuilds a correlation — which matters most for `OnLinkConfirm`, whose
+webhook has no `txn_id` at all.
 
 `RespondToFetch` takes the event value straight back. That event carries `transaction_id`,
 the HIU key material, and the `oid` / `partner_patient_id` / `hip_id` needed for the response
@@ -128,6 +176,29 @@ headers, so the integrator never rebuilds a correlation or touches key material 
 
 Single page (`page_number: 1`, `page_count: 1`) in v1.
 `ponytail: single-page response; add chunking if bundles exceed the payload limit.`
+
+## What discovery requires from the integrator
+
+Discovery is the least "plug and play" part of M2, and the spec should not pretend otherwise.
+Three things are irreducibly the integrator's, because the package has neither an SMS gateway
+nor a datastore:
+
+1. **Demographic matching.** On `abha.care_context_discover` the integrator queries their own
+   patient table using `patient_name`, `gender`, `year_of_birth` and `identifiers[]`
+   (`MOBILE`, `ABHA_NUMBER`, `abhaAddress`), and returns unlinked care contexts. Match
+   conservatively: a loose match leaks another patient's records to the requester. The README
+   must say this in those words.
+2. **OTP generation and delivery.** On `abha.care_context_discover_link_init` the integrator
+   generates the OTP, sends it to the patient's registered mobile, and reports the dispatch
+   (with `ref_num` and `otp_expiry`) via `OnLinkInit`.
+3. **OTP state and validation.** The OTP must survive between the init and confirm webhooks,
+   keyed by the `ref_num` sent at init, which comes back as `linkRefNumber` on
+   `abha.context_discover_link_confirm`. The package holds no state, so this store is the
+   integrator's.
+
+This does not change the "no persistence in the package" decision, but it does mean discovery
+imposes a state requirement on the integrator that HIP-initiated linking does not. Document it
+prominently rather than letting them discover it at certification.
 
 ## Errors, retries, idempotency
 
@@ -186,18 +257,25 @@ unconditionally, expired or not. It must apply the ladder above.
 `abdm-ecdh` ships its own crypto test suite, so we do not re-test encryption.
 
 The only non-trivial logic we own is `ParseWebhook`. One table test: valid signature,
-tampered body, stale `t`, unknown event type. No mocks, no fixtures, no HTTP test server.
+tampered body, stale `t`, unknown event type, and one case per event name asserting each of
+the five payloads decodes to the right type. The event-name cases earn their place — the
+upstream names are inconsistent (`abha.context_discover_link_confirm` lacks the `care_`
+prefix), so a typo is both easy to make and invisible until certification.
+No mocks, no fixtures, no HTTP test server.
 
 `examples/m2-hip/main.go` is the runnable end-to-end reference: link a care context, then a
-`net/http` route showing parse-and-respond.
+`net/http` route switching over all five events, with the OTP store stubbed as an in-memory
+map and labelled as the integrator's responsibility.
 
 ## Language ports
 
-Go first. The three-function surface (`link`, `parse_webhook`, `respond_to_fetch`) maps
-directly onto Python and Java, and `abdm-ecdh` already publishes for all three. Each port is
-its own project; this spec is the contract they implement.
+Go first. The six-function surface (`link`, `parse_webhook`, `respond_to_fetch`,
+`on_discover`, `on_link_init`, `on_link_confirm`) maps directly onto Python and Java, and
+`abdm-ecdh` already publishes for all three. Each port is its own project; this spec is the
+contract they implement.
 
 ## Open questions
 
-None blocking. Deferred by explicit decision: discovery events, FHIR builder,
-`OnTokenRefresh` hook, response pagination.
+None blocking. Deferred by explicit decision: FHIR builder, `OnTokenRefresh` hook,
+Data-On-Fetch response pagination, Providers/Records listing, `records/notify` (unlinked
+care-context notification), and the Scan-and-Share token webhook.
