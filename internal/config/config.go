@@ -55,7 +55,7 @@ var _ interfaces.Config = (*Config)(nil)
 func NewConfig() *Config {
 	return &Config{
 		Environment:       EnvironmentProduction,
-		BaseURL:           "https://api.eka.care",
+		BaseURL:           EnvironmentProduction.GetBaseURL(),
 		Timeout:           30 * time.Second,
 		MaxRetries:        3,
 		UserAgent:         "eka-sdk-go/1.0",

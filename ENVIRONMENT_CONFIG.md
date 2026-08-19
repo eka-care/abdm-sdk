@@ -45,7 +45,7 @@ err := client.Login(ctx)
 | Environment | Base URL | Use For |
 |-------------|----------|---------|
 | `production` | `https://api.eka.care` | Live applications |
-| `development` | `https://api-dev.eka.care` | Testing and development |
+| `development` | `https://api.dev.eka.care` | Testing and development |
 
 ## Configuration Examples
 

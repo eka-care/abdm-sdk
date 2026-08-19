@@ -191,7 +191,7 @@ func New(opts ...Option) *Client {
 	// Create internal config manually
 	internalConfig := &config.Config{
 		Environment:       config.Environment(options.Environment),
-		BaseURL:           getBaseURL(options.Environment),
+		BaseURL:           config.Environment(options.Environment).GetBaseURL(),
 		ClientID:          options.ClientID,
 		ClientSecret:      options.ClientSecret,
 		Timeout:           options.Timeout,
@@ -273,18 +273,6 @@ func NewFromEnv() *Client {
 		WithLogLevel(options.LogLevel),
 		WithDisableSSL(options.DisableSSL),
 	)
-}
-
-// getBaseURL returns the base URL for the given environment
-func getBaseURL(env Environment) string {
-	switch env {
-	case EnvironmentProduction:
-		return "https://api.eka.care"
-	case EnvironmentDevelopment:
-		return "https://api-dev.eka.care"
-	default:
-		return "https://api.eka.care"
-	}
 }
 
 // createABDMClient creates an ABDM client from the internal config
