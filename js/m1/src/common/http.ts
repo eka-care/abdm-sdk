@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { ABHA_BASE_URLS, type AccessTokenSource, type CallOptions, type M1Config } from "./config.js";
+import type { AccessTokenSource, CallOptions } from "./config.js";
 import { AbdmError } from "./errors.js";
 
 export interface RequestInit {
@@ -14,18 +14,13 @@ export interface HttpClient {
 
 export const bearer = (token: string) => (token.startsWith("Bearer ") ? token : `Bearer ${token}`);
 
-/** Sends ABHA requests with the headers NHA requires on every call. */
-export class AbhaHttpClient implements HttpClient {
-  private readonly baseUrl: string;
-  private readonly accessToken: AccessTokenSource;
-  private readonly fetch: typeof fetch;
-
-  constructor(config: M1Config) {
-    if (!config.accessToken) throw new Error("accessToken is required");
-    this.baseUrl = config.baseUrl ?? ABHA_BASE_URLS[config.environment ?? "sandbox"];
-    this.accessToken = config.accessToken;
-    this.fetch = config.fetch ?? globalThis.fetch;
-  }
+/** Sends requests to one NHA API family with the headers NHA requires on every call. */
+export class NhaHttpClient implements HttpClient {
+  constructor(
+    private readonly baseUrl: string,
+    private readonly accessToken: AccessTokenSource,
+    private readonly fetch: typeof globalThis.fetch = globalThis.fetch,
+  ) {}
 
   async request<T>(method: string, path: string, init: RequestInit = {}, opts: CallOptions = {}): Promise<T> {
     const url = new URL(this.baseUrl + path);

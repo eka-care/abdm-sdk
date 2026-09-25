@@ -18,32 +18,32 @@ export class AddressService {
   ) {}
 
   search(abhaAddress: string, opts?: CallOptions): Promise<AddressSearchResponse> {
-    return this.http.request("POST", "/v3/phr/web/login/abha/search", { body: { abhaAddress } }, opts);
+    return this.http.request("POST", "/login/abha/search", { body: { abhaAddress } }, opts);
   }
 
-  async requestOtp(req: AddressOtpRequest, opts?: CallOptions): Promise<OtpResponse> {
-    return this.http.request("POST", "/v3/phr/web/login/abha/request/otp", {
+  requestOtp(req: AddressOtpRequest, opts?: CallOptions): Promise<OtpResponse> {
+    return this.http.request("POST", "/login/abha/request/otp", {
       body: {
         scope: ["abha-address-login", verifyScope(req.otpSystem)],
         loginHint: "abha-address",
-        loginId: await this.encryptor.encrypt(req.abhaAddress, opts),
+        loginId: this.encryptor.encrypt(req.abhaAddress),
         otpSystem: req.otpSystem,
       },
     }, opts);
   }
 
-  async verifyOtp(req: VerifyAddressOtpRequest, opts?: CallOptions): Promise<AddressVerifyResponse> {
-    const otp = await this.encryptor.encrypt(req.otp, opts);
-    return this.http.request("POST", "/v3/phr/web/login/abha/verify", {
+  verifyOtp(req: VerifyAddressOtpRequest, opts?: CallOptions): Promise<AddressVerifyResponse> {
+    const otp = this.encryptor.encrypt(req.otp);
+    return this.http.request("POST", "/login/abha/verify", {
       body: { scope: ["abha-address-login", verifyScope(req.otpSystem)], authData: otpAuthData(req.txnId, otp) },
     }, opts);
   }
 
   getProfile(xToken: string, opts?: CallOptions): Promise<Record<string, unknown>> {
-    return this.http.request("GET", "/v3/phr/web/login/profile/abha-profile", { headers: { "X-token": bearer(xToken) } }, opts);
+    return this.http.request("GET", "/login/profile/abha-profile", { headers: { "X-token": bearer(xToken) } }, opts);
   }
 
   getCard(xToken: string, opts?: CallOptions): Promise<ArrayBuffer> {
-    return this.http.request("GET", "/v3/phr/web/login/profile/abha/phr-card", { headers: { "X-token": bearer(xToken) } }, opts);
+    return this.http.request("GET", "/login/profile/abha/phr-card", { headers: { "X-token": bearer(xToken) } }, opts);
   }
 }

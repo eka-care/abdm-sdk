@@ -23,6 +23,12 @@ The client never sees your client ID or secret. You get the ABDM gateway session
 - **A string**: fine for scripts. Create a new client when the token expires.
 - **Per call**: pass `{ accessToken }` as the last argument to override the token for that call. That argument also takes `requestId`, `signal` and `headers`.
 
+### Keys and hosts
+
+NHA's public keys are built in, the same ones Eka's ndhm service uses. There's one key for ABHA calls and a separate one for the PHR app calls (the mobile PHR address flow). The client makes no network call to fetch a key. If NHA rotates a key, pass the new PEM in `publicKeys: { abha, phr }`.
+
+In production, NHA serves ABHA, PHR app and PHR web calls from different hosts. The client picks the right one for each call. To change any of them, for example to go through a proxy, use `baseUrls: { abha, phrApp, phrWeb }`.
+
 User tokens (the X-token and T-token) are separate. They come back from verify calls, and you pass them to the methods that need them.
 
 ## Create an ABHA number with Aadhaar
@@ -91,8 +97,8 @@ A response that isn't 2xx throws `AbdmError` with `status`, the NHA response `bo
 
 ```
 src/
-  client.ts     M1Client: builds the shared HTTP client and encryptor, then one service per flow
-  common/       shared code: config, HTTP client, encryption, errors, OTP helpers, shared models
+  client.ts     M1Client: connects each service to its NHA host and key
+  common/       shared code: config and hosts, NHA keys, HTTP client, encryption, errors, OTP helpers, shared models
   aadhaar/      create an ABHA number with Aadhaar          (aadhaar.service.ts, aadhaar.types.ts)
   phr/          create an ABHA address from a mobile number (phr.service.ts, phr.types.ts)
   login/        log in with Aadhaar, mobile or ABHA number  (login.service.ts, login.types.ts)

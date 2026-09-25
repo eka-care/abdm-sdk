@@ -1,6 +1,6 @@
 export { M1Client } from "./client.js";
 export { AbdmError } from "./common/errors.js";
-export type { CallOptions, Environment, M1Config } from "./common/config.js";
+export type { BaseUrls, CallOptions, Environment, M1Config } from "./common/config.js";
 
 export { AadhaarService } from "./aadhaar/aadhaar.service.js";
 export { AddressService } from "./address/address.service.js";

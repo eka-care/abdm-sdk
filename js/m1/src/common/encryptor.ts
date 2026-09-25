@@ -1,33 +1,19 @@
 import { constants, createPublicKey, publicEncrypt, type KeyObject } from "node:crypto";
-import type { CallOptions } from "./config.js";
-import type { HttpClient } from "./http.js";
 
 export interface Encryptor {
-  encrypt(value: string, opts?: CallOptions): Promise<string>;
+  encrypt(value: string): string;
 }
 
-/** RSA/ECB/OAEPWithSHA-1AndMGF1Padding with the ABHA public certificate, as NHA requires. */
-export class AbhaEncryptor implements Encryptor {
-  private publicKey?: Promise<KeyObject>;
+/** RSA/ECB/OAEPWithSHA-1AndMGF1Padding, as NHA requires for identifiers, OTPs and passwords. */
+export class RsaOaepEncryptor implements Encryptor {
+  private readonly key: KeyObject;
 
-  constructor(private readonly http: HttpClient) {}
-
-  async encrypt(value: string, opts: CallOptions = {}): Promise<string> {
-    return encryptWith(await this.loadPublicKey(opts.accessToken), value);
+  constructor(publicKeyPem: string) {
+    this.key = createPublicKey(publicKeyPem);
   }
 
-  private loadPublicKey(accessToken?: string): Promise<KeyObject> {
-    this.publicKey ??= this.http
-      .request<{ publicKey: string }>("GET", "/v3/profile/public/certificate", {}, { accessToken })
-      .then(({ publicKey }) => createPublicKey({ key: Buffer.from(publicKey, "base64"), format: "der", type: "spki" }))
-      .catch((err) => {
-        this.publicKey = undefined;
-        throw err;
-      });
-    return this.publicKey;
+  encrypt(value: string): string {
+    return publicEncrypt({ key: this.key, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: "sha1" }, Buffer.from(value))
+      .toString("base64");
   }
-}
-
-export function encryptWith(key: KeyObject, value: string): string {
-  return publicEncrypt({ key, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: "sha1" }, Buffer.from(value)).toString("base64");
 }

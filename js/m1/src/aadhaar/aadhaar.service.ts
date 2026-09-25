@@ -22,20 +22,20 @@ export class AadhaarService {
     private readonly encryptor: Encryptor,
   ) {}
 
-  async requestOtp(aadhaar: string, opts?: CallOptions): Promise<OtpResponse> {
-    return this.http.request("POST", "/v3/enrollment/request/otp", {
+  requestOtp(aadhaar: string, opts?: CallOptions): Promise<OtpResponse> {
+    return this.http.request("POST", "/enrollment/request/otp", {
       body: {
         scope: ["abha-enrol"],
         loginHint: "aadhaar",
-        loginId: await this.encryptor.encrypt(aadhaar, opts),
+        loginId: this.encryptor.encrypt(aadhaar),
         otpSystem: "aadhaar",
       },
     }, opts);
   }
 
-  async verifyOtp(req: VerifyAadhaarOtpRequest, opts?: CallOptions): Promise<EnrolResponse> {
-    const otpValue = await this.encryptor.encrypt(req.otp, opts);
-    return this.http.request("POST", "/v3/enrollment/enrol/byAadhaar", {
+  verifyOtp(req: VerifyAadhaarOtpRequest, opts?: CallOptions): Promise<EnrolResponse> {
+    const otpValue = this.encryptor.encrypt(req.otp);
+    return this.http.request("POST", "/enrollment/enrol/byAadhaar", {
       body: {
         authData: { authMethods: ["otp"], otp: { txnId: req.txnId, otpValue, mobile: req.mobile } },
         consent: ENROL_CONSENT,
@@ -43,31 +43,31 @@ export class AadhaarService {
     }, opts);
   }
 
-  async requestMobileOtp(req: MobileOtpRequest, opts?: CallOptions): Promise<OtpResponse> {
-    return this.http.request("POST", "/v3/enrollment/request/otp", {
+  requestMobileOtp(req: MobileOtpRequest, opts?: CallOptions): Promise<OtpResponse> {
+    return this.http.request("POST", "/enrollment/request/otp", {
       body: {
         txnId: req.txnId,
         scope: ["abha-enrol", "mobile-verify"],
         loginHint: "mobile",
-        loginId: await this.encryptor.encrypt(req.mobile, opts),
+        loginId: this.encryptor.encrypt(req.mobile),
         otpSystem: "abdm",
       },
     }, opts);
   }
 
-  async verifyMobileOtp(req: VerifyMobileOtpRequest, opts?: CallOptions): Promise<MobileVerifyResponse> {
-    const otp = await this.encryptor.encrypt(req.otp, opts);
-    return this.http.request("POST", "/v3/enrollment/auth/byAbdm", {
+  verifyMobileOtp(req: VerifyMobileOtpRequest, opts?: CallOptions): Promise<MobileVerifyResponse> {
+    const otp = this.encryptor.encrypt(req.otp);
+    return this.http.request("POST", "/enrollment/auth/byAbdm", {
       body: { scope: ["abha-enrol", "mobile-verify"], authData: otpAuthData(req.txnId, otp) },
     }, opts);
   }
 
   suggestAddresses(txnId: string, opts?: CallOptions): Promise<AddressSuggestions> {
-    return this.http.request("GET", "/v3/enrollment/enrol/suggestion", { headers: { TRANSACTION_ID: txnId } }, opts);
+    return this.http.request("GET", "/enrollment/enrol/suggestion", { headers: { TRANSACTION_ID: txnId } }, opts);
   }
 
   createAddress(req: CreateAbhaAddressRequest, opts?: CallOptions): Promise<CreateAbhaAddressResponse> {
-    return this.http.request("POST", "/v3/enrollment/enrol/abha-address", {
+    return this.http.request("POST", "/enrollment/enrol/abha-address", {
       body: { txnId: req.txnId, abhaAddress: req.abhaAddress, preferred: req.preferred === false ? 0 : 1 },
     }, opts);
   }

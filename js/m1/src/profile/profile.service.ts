@@ -8,10 +8,10 @@ export class ProfileService {
 
   /** `phrAddress` lists every ABHA address on the account. */
   get(xToken: string, opts?: CallOptions): Promise<AbhaProfile> {
-    return this.http.request("GET", "/v3/profile/account", { headers: { "X-token": bearer(xToken) } }, opts);
+    return this.http.request("GET", "/profile/account", { headers: { "X-token": bearer(xToken) } }, opts);
   }
 
   getCard(xToken: string, opts?: CallOptions): Promise<ArrayBuffer> {
-    return this.http.request("GET", "/v3/profile/account/abha-card", { headers: { "X-token": bearer(xToken) } }, opts);
+    return this.http.request("GET", "/profile/account/abha-card", { headers: { "X-token": bearer(xToken) } }, opts);
   }
 }

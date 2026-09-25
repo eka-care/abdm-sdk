@@ -21,11 +21,11 @@ export class LoginService {
 
   async requestOtp(req: LoginOtpRequest, opts?: CallOptions): Promise<LoginOtpResponse> {
     const otpSystem = req.otpSystem ?? (req.loginHint === "aadhaar" ? "aadhaar" : "abdm");
-    const res = await this.http.request<OtpResponse>("POST", "/v3/profile/login/request/otp", {
+    const res = await this.http.request<OtpResponse>("POST", "/profile/login/request/otp", {
       body: {
         scope: ["abha-login", verifyScope(otpSystem)],
         loginHint: req.loginHint,
-        loginId: await this.encryptor.encrypt(req.value, opts),
+        loginId: this.encryptor.encrypt(req.value),
         otpSystem,
       },
     }, opts);
@@ -33,15 +33,15 @@ export class LoginService {
   }
 
   /** Lists matching `accounts`. With several, pick one and call `verifyUser` with `token`. */
-  async verifyOtp(req: VerifyLoginOtpRequest, opts?: CallOptions): Promise<LoginVerifyResponse> {
-    const otp = await this.encryptor.encrypt(req.otp, opts);
-    return this.http.request("POST", "/v3/profile/login/verify", {
+  verifyOtp(req: VerifyLoginOtpRequest, opts?: CallOptions): Promise<LoginVerifyResponse> {
+    const otp = this.encryptor.encrypt(req.otp);
+    return this.http.request("POST", "/profile/login/verify", {
       body: { scope: ["abha-login", verifyScope(req.otpSystem)], authData: otpAuthData(req.txnId, otp) },
     }, opts);
   }
 
   verifyUser(req: VerifyUserRequest, opts?: CallOptions): Promise<VerifyUserResponse> {
-    return this.http.request("POST", "/v3/profile/login/verify/user", {
+    return this.http.request("POST", "/profile/login/verify/user", {
       body: { txnId: req.txnId, ABHANumber: req.abhaNumber },
       headers: { "T-token": bearer(req.tToken) },
     }, opts);
